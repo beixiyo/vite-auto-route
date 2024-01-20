@@ -12,6 +12,9 @@
     |-- about
       |-- index.vue
       |-- meta.(ts | js)
+      |-- nestFloder
+        |-- index.vue
+        |-- meta.(ts | js)
 </pre>
 
 如上图示例，因为 *vite* 的工具，无法使用变量来查找目录
@@ -23,6 +26,8 @@
 `/src/views/index.vue`，会作为路由的首页
 
 `/src/views/about/index.vue`，会作为首页的子路由
+
+*meta* 为可选项
 
 
 ## 如何传递 *meta* ？

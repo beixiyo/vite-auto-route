@@ -10,9 +10,7 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
     input: 'src/index.ts',
     output: [
-        outputFormat('dist/index.cjs', 'cjs'),
         outputFormat('dist/index.js', 'es'),
-        outputFormat('dist/index.browser.js', 'iife', 'jl'),
     ],
     plugins: [
         nodeResolve(),  // 开启`node_modules`查找模块功能
