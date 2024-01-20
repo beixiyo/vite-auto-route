@@ -5,9 +5,15 @@ const PATH_PREFIX = '/src/views'
 const RAW_PATH = Symbol('rawPath')
 
 /**
- * '/src/views'下的每个文件夹 必须有`index.vue`
- * `meta`为可选 必须使用默认导出
- * 生成路由配置 { component, meta, path, name }
+ * '/src/views' 下的每个文件夹 必须有`index.vue`
+ *
+ * `meta` 为可选 必须使用默认导出
+ *
+ * `meta` 里的 *beforeEnter* 会被提取出来
+ *
+ * 生成路由配置
+ * @example
+ * { component, meta, path, name, beforeEnter }
  */
 function genRoutes() {
     const routeMap = genRouteMap()
