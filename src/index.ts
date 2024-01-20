@@ -9,10 +9,15 @@ const RAW_PATH = Symbol('rawPath')
  * `meta`为可选 必须使用默认导出
  * 生成路由配置 { component, meta, path, name }
  */
-export function genRoutes() {
+function genRoutes() {
     const routeMap = genRouteMap()
     const routeTarget = hanldeNest(routeMap)
     return Object.values(routeTarget) as RouteItem[]
+}
+
+export default genRoutes
+export {
+    genRoutes
 }
 
 
@@ -36,7 +41,7 @@ function genRouteMap() {
 
         const basePath = key.replace('/index.vue', ''),
             component = compObj[key],
-            meta = (metaObj[basePath + '/meta.ts'] || metaObj[basePath + '/meta.js'] as any)?.default,
+            meta = (metaObj[basePath + '/meta.ts'] || metaObj[basePath + '/meta.js'] as any)?.default || {},
 
             path = basePath.replace(PATH_PREFIX, '') || '/',
             name = path.slice(1) || 'index'
@@ -65,9 +70,29 @@ function hanldeNest(routeMap: Map<string, RouteItem>) {
         const _path = basePath.replace(PATH_PREFIX, '') || '/'
         /** /path/path2 => ['', 'path', 'path2', ...] */
         const pathChunk = _path.split('/')
+
+        /** 不能用 `delete meta.beforeEnter` 会导致下次调用无法读取 */
+        const _meta: any = {}
+        const { beforeEnter } = meta
+        for (const k in meta) {
+            if (
+                !Object.hasOwnProperty.call(meta, k) ||
+                k === 'beforeEnter'
+            ) continue
+
+            _meta[k] = meta[k]
+        }
+
         if (pathChunk.length === 2) {
             const parent = pathChunk[1] || '/'
-            parentTarget[parent] = { path, name, meta, component, children: [] }
+            parentTarget[parent] = {
+                path,
+                name,
+                meta: _meta,
+                component,
+                children: [],
+                ...(beforeEnter ? { beforeEnter } : {})
+            }
         }
         else {
             /** 子路由 采用驼峰命名法 */
@@ -80,9 +105,10 @@ function hanldeNest(routeMap: Map<string, RouteItem>) {
                 /** 子路由仅需后面作为路径 */
                 path: pathChunk.at(-1),
                 name: _name,
-                meta,
+                meta: _meta,
                 component,
-                children: []
+                children: [],
+                ...(beforeEnter ? { beforeEnter } : {})
             }
         }
     }
@@ -111,12 +137,12 @@ function hanldeNest(routeMap: Map<string, RouteItem>) {
                         /** 子节点 不需要以 / 开头 */
                         path: child.path
                     })
+                    /** 完成一遍放入数组 后续删除 */
                     delPathArr.push(path)
                 }
             }
         }
 
-        /** 完成一遍放入数组 */
         delPathArr.forEach((p) => delete childTarget[p])
         delPathArr.splice(0)
         if (Object.keys(childTarget).length === 0) return
@@ -172,5 +198,5 @@ type RouteItem = {
     path: string
     name: string
     component: any
-    meta?: Record<string, any>
+    meta: Record<string, any>
 }

@@ -41,12 +41,25 @@
 
 在一个目录下，创建一个新的文件夹，里面包含 *index.vue* 文件即可
 
+## 如果使用路由守卫？
+
+在 *meta.ts* | *meta.js* 文件中，添加一个 *beforeEnter* 函数即可
+
+*beforeEnter* 会被自动提取出来
+
 
 ## 使用
 
 ```ts
 import { genRoutes } from '@jl-org/vite-auto-route'
+import { createRouter, createWebHistory } from 'vue-router'
 
 
-const routes = genRoutes()
+const routes = genRoute()
+const router = createRouter({
+    history: createWebHistory(),
+    routes
+})
+
+export default router
 ```
