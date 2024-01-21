@@ -17,6 +17,9 @@ const router = createRouter({
 export default router
 ```
 
+> 如果你用的不是 *vite*，并且支持 *node* 环境，请使用`https://www.npmjs.com/package/@jl-org/auto-route`
+
+
 ## 他能做什么？
 
 **自动生成路由配置**
