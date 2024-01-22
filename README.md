@@ -1,5 +1,11 @@
 # 自动生成路由配置，支持嵌套路由
 
+## 安装
+
+```bash
+npm i @jl-org/vite-auto-route
+```
+
 
 ## 使用
 

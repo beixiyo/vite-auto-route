@@ -1,6 +1,6 @@
 {
     "name": "@jl-org/vite-auto-route",
-    "version": "1.0.31",
+    "version": "1.0.32",
     "homepage": "https://github.com/beixiyo/vite-auto-route",
     "description": "自动生成路由配置，支持嵌套路由",
     "module": "dist/index.js",
@@ -11,8 +11,8 @@
     ],
     "exports": {
         "import": {
-            "default": "./dist/index.js",
-            "types": "./dist/typings/index.d.ts"
+            "types": "./dist/typings/index.d.ts",
+            "default": "./dist/index.js"
         }
     },
     "scripts": {
