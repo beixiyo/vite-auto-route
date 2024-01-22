@@ -20,7 +20,7 @@ const PATH_PREFIX = /^\/src\/views/,
  * `meta` 里的 *beforeEnter* | *redirect* 会被提取出来
  *
  * 生成路由配置
- * @example
+ * @returns @example
  * { component, meta, path, name, beforeEnter, redirect }
  */
 function genRoutes() {
@@ -95,6 +95,12 @@ function hanldeNest(routeMap: Map<string, RouteItem>) {
         const _path = path.replace(PATH_PREFIX, '') || '/'
         /** /path/path2 => ['', 'path', 'path2', ...] */
         const pathChunk = _path.split('/')
+        let len = pathChunk.length
+
+        /** 说明也是根目录 */
+        if (len === 3 && pathChunk[2].startsWith(':')) {
+            len = 2
+        }
 
         /** 不能用 `delete meta.beforeEnter` 会导致下次调用无法读取 */
         const _meta: any = {}
@@ -108,7 +114,7 @@ function hanldeNest(routeMap: Map<string, RouteItem>) {
             _meta[k] = meta[k]
         }
 
-        if (pathChunk.length === 2) {
+        if (len === 2) {
             const parent = pathChunk[1] || '/'
             parentTarget[parent] = {
                 path,
