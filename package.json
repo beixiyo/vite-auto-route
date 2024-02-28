@@ -1,6 +1,6 @@
 {
     "name": "@jl-org/vite-auto-route",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "homepage": "https://github.com/beixiyo/vite-auto-route",
     "description": "自动生成路由配置，支持嵌套路由",
     "module": "dist/index.js",

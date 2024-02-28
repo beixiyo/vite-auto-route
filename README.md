@@ -15,6 +15,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 
 const routes = genRoute()
+/** 未匹配路径处理 */
+routes.push({
+    path: '/:pathMatch(.*)*',
+    redirect: '/YourPath',
+})
+
 const router = createRouter({
     history: createWebHistory(),
     routes
@@ -59,11 +65,29 @@ export default router
 
 在`/src/views/`下建立你的路由文件吧
 
-`/src/views/index.vue`，会作为路由的首页
+`/src/views/index.vue`，会作为路由的首页，且必须存在
 
 `/src/views/about/index.vue`，会作为首页的子路由
 
 *meta* 为可选项
+
+## 我不想让 `src/views/index.vue` 作为首页怎么办？
+
+当你可能需要 `/home` 作为首页，那么你可以进行如下配置
+
+首先，`src/views/index.vue` 必须创建，你里面可以不写东西，比如
+```html
+<template></template>
+```
+
+创建 `src/views/meta.{j,t}s` 文件，里面写上重定向即可  
+然后你就可以在 `src/views/home/index.vue` 编写你的首页了
+```ts
+export default {
+    redirect: '/home',
+}
+```
+
 
 
 ## 如何传递 *meta* ？
