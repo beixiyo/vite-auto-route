@@ -19,7 +19,7 @@ const routes = genRoute()
 routes.push({
     path: '/:pathMatch(.*)*',
     redirect: '/YourPath',
-})
+} as any)
 
 const router = createRouter({
     history: createWebHistory(),
