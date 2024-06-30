@@ -9,6 +9,8 @@ npm i @jl-org/vite-auto-route
 
 ## 使用
 
+**如果遇到数组没有匹配到路由，请先删除 `/node_modules/.vite` 文件夹，再重新编译**
+
 ```ts
 import { genRoutes } from '@jl-org/vite-auto-route'
 import { createRouter, createWebHistory } from 'vue-router'
