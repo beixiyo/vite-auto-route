@@ -6,32 +6,7 @@
 npm i @jl-org/vite-auto-route
 ```
 
-
-## 使用
-
-**如果遇到数组没有匹配到路由，请先删除 `/node_modules/.vite` 文件夹，再重新编译**
-
-```ts
-import { genRoutes } from '@jl-org/vite-auto-route'
-import { createRouter, createWebHistory } from 'vue-router'
-
-
-const routes = genRoute()
-/** 未匹配路径处理 */
-routes.push({
-    path: '/:pathMatch(.*)*',
-    redirect: '/YourPath',
-} as any)
-
-const router = createRouter({
-    history: createWebHistory(),
-    routes
-})
-
-export default router
-```
-
-> 如果你用的不是 *vite*，并且支持 *node* 环境，请使用`https://www.npmjs.com/package/@jl-org/auto-route`
+---
 
 
 ## 他能做什么？
@@ -43,6 +18,72 @@ export default router
 3. 路由参数
 4. 路由重定向
 5. meta
+
+
+## 使用
+
+**如果遇到数组没有匹配到路由，请先删除 `/node_modules/.vite` 文件夹，再重新编译**
+
+### Vue
+```ts
+import { genRoutes } from '@jl-org/vite-auto-route'
+import { createRouter, createWebHistory } from 'vue-router'
+
+// Vue 开箱即用，默认读取 /src/views/**/index.vue
+// 如果需要读取其他文件夹，请看 React 示例
+const routes = genRoute()
+
+/** 未匹配路径处理 */
+routes.push({
+  path: '/:pathMatch(.*)*',
+  redirect: '/YourPath',
+} as any)
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router
+```
+
+
+### React
+```ts
+import { genRoutes } from '@jl-org/vite-auto-route'
+
+// 拿到 /src/views 下所有 index.tsx 作为路由
+const views = genRoutes({
+  globComponentsImport: () => import.meta.glob('/src/views/**/index.tsx'),
+  indexFileName: '/index.tsx',
+  routerPathFolder: '/src/views',
+  pathPrefix: /^\/src\/views/,
+})
+// 拿到 /src/components 下所有 Test.tsx 作为路由
+const components = genRoutes({
+  globComponentsImport: () => import.meta.glob('/src/components/**/Test.tsx'),
+  indexFileName: '/Test.tsx',
+  routerPathFolder: '/src/components',
+  pathPrefix: /^\/src\/components/,
+})
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Index />, // 路由入口
+
+    children: [
+      {
+        path: '/',
+        element: <AnimateRoute />,
+        children: views.concat(components), // 所有路由
+      },
+    ],
+  },
+])
+```
+
+如果你用的不是 *vite*，并且支持 *node* 环境，请使用`https://www.npmjs.com/package/@jl-org/auto-route`
 
 
 ## 规范
@@ -61,11 +102,9 @@ export default router
         |-- meta.(ts | js)
 </pre>
 
-如上图示例，因为 *vite* 的工具，无法使用变量来查找目录
+如上图示例目录结构所示
 
-所以你的路由需按照配置写，不能自定义配置
-
-在`/src/views/`下建立你的路由文件吧
+推荐在`/src/views/`下建立你的路由文件
 
 `/src/views/index.vue`，会作为路由的首页，且必须存在
 
