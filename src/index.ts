@@ -1,4 +1,4 @@
-import type { RouteConfigOptions, RouteItem } from '@/types'
+import type { RouteConfigOptions, RouteItem } from './types'
 import { toCamel } from './tools'
 import { genRouteMap, hanldeNest } from './tools'
 

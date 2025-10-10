@@ -1,4 +1,4 @@
-import type { RouteConfigOptions, RouteItem } from '@/types'
+import type { RouteConfigOptions, RouteItem } from './types'
 
 
 /**
@@ -78,7 +78,7 @@ export function hanldeNest(
   return parentTarget
 
   function splitParentAndChild({ component, name, path, meta }: RouteItem) {
-    const _path = path.replace(pathPrefix, '') || '/'
+    const _path = path || '/'
     /** /path/path2 => ['', 'path', 'path2', ...] */
     const pathChunk = _path.split('/')
     let len = pathChunk.length
@@ -102,9 +102,9 @@ export function hanldeNest(
       _meta[k] = meta[k]
     }
 
-    const folderDepth = routerPathFolder.split('/').length - 1
-    if (len === folderDepth) {
-      const parent = pathChunk[folderDepth - 1] || '/'
+    // 对于处理后的路径，我们只需要检查是否是根路径
+    if (len === 2) { // 处理后的路径如 ['', 'Button'] 长度为 2
+      const parent = pathChunk[1] || '/'
       parentTarget[parent] = {
         path,
         name,
