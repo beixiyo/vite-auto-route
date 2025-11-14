@@ -1,160 +1,181 @@
-# 自动生成路由配置，支持嵌套路由
+# Vite auto route
 
-## 安装
+基于 Vite 文件系统结构自动生成路由配置的工具
 
-```bash
-npm i @jl-org/vite-auto-route
-```
+## 核心规则
+
+### 动态路由参数
+
+使用方括号语法定义动态参数：
+
+| 文件路径 | 生成的路由路径 | 说明 |
+|---------|--------------|------|
+| `[id]/page.tsx` | `/:id` | 必选参数 |
+| `[id$]/page.tsx` | `/:id?` | 可选参数（以 `$` 结尾） |
+| `[...slug]/page.tsx` | `/:slug*` | 捕获所有参数（以 `...` 开头） |
 
 ---
 
+## React Router 使用示例
 
-## 他能做什么？
+[示例项目](https://github.com/beixiyo/react-tool/blob/main/packages/app/src/router/index.tsx)
 
-**自动生成路由配置，支持：**
-
-1. 嵌套路由
-2. 路由守卫
-3. 路由参数
-4. 路由重定向
-5. meta
-
-
-## 使用
-
-**如果遇到数组没有匹配到路由，请先删除 `/node_modules/.vite` 文件夹，再重新编译**
-
-### Vue
 ```ts
+import type { FileSystemRoute } from '@jl-org/vite-auto-route'
+import type { ComponentType } from 'react'
+import type { RouteObject } from 'react-router'
 import { genRoutes } from '@jl-org/vite-auto-route'
-import { createRouter, createWebHistory } from 'vue-router'
+import { lazy } from 'react'
+import { createBrowserRouter } from 'react-router'
+import Index from '@/views'
 
-// Vue 开箱即用，默认读取 /src/views/**/index.vue
-// 如果需要读取其他文件夹，请看 React 示例
-const routes = genRoute()
-
-/** 未匹配路径处理 */
-routes.push({
-  path: '/:pathMatch(.*)*',
-  redirect: '/YourPath',
-} as any)
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
-
-export default router
-```
-
-
-### React
-```ts
-import { genRoutes } from '@jl-org/vite-auto-route'
-
-// 拿到 /src/views 下所有 index.tsx 作为路由
-const views = genRoutes({
-  globComponentsImport: () => import.meta.glob('/src/views/**/index.tsx'),
-  indexFileName: '/index.tsx',
+const pages = genRoutes({
+  globComponentsImport: () => import.meta.glob('/src/views/**/page.tsx'),
+  indexFileName: '/page.tsx',
   routerPathFolder: '/src/views',
   pathPrefix: /^\/src\/views/,
 })
-// 拿到 /src/components 下所有 Test.tsx 作为路由
+
+/** 分离首页和其他路由 */
+const otherRoutes = pages.filter(item => item.path !== '/')
+
+export const router = createBrowserRouter([
+  /** 首页路由 - 独立路由 */
+  {
+    path: '/',
+    Component: Index,
+  },
+  ...deepToLazy(otherRoutes),
+])
+
+function deepToLazy(routes: FileSystemRoute[]): RouteObject[] {
+  return routes.map((route) => {
+    return {
+      path: route.path,
+      Component: lazy(async () => {
+        const mod = await route.component()
+        if (mod && typeof mod === 'object' && 'default' in mod)
+          return { default: (mod as { default: ComponentType<any> }).default }
+        return { default: mod as ComponentType<any> }
+      }),
+      children: route.children.length > 0
+        ? deepToLazy(route.children)
+        : undefined,
+    }
+  })
+}
+```
+
+## Vue Router 使用示例
+
+```ts
+import { genRoutes } from '@jl-org/vite-auto-route'
+import { createRouter, createWebHistory } from 'vue-router'
+import Index from '../views/index.vue'
+
+/** 拿到 /src/views 下所有 index.vue 作为路由 */
+const views = genRoutes({
+  globComponentsImport: () => import.meta.glob('/src/views/**/page.vue'),
+  indexFileName: '/page.vue',
+  routerPathFolder: '/src/views',
+  pathPrefix: /^\/src\/views/,
+})
+/** 拿到 /src/components 下所有 Test.vue 作为路由 */
 const components = genRoutes({
-  globComponentsImport: () => import.meta.glob('/src/components/**/Test.tsx'),
-  indexFileName: '/Test.tsx',
+  globComponentsImport: () => import.meta.glob('/src/components/**/Test.vue'),
+  indexFileName: '/Test.vue',
   routerPathFolder: '/src/components',
   pathPrefix: /^\/src\/components/,
 })
 
-export const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <Index />, // 路由入口
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      component: Index,
+    },
+    ...views,
+    ...components,
+  ],
+})
+```
 
+---
+
+## 文件树示例
+
+```
+src/views/
+├── index.tsx                    # 布局组件（不参与路由生成）
+├── test/
+│   ├── page.tsx                 # /test
+│   ├── nested/
+│   │   ├── page.tsx             # /test/nested
+│   │   └── deep/
+│   │       ├── page.tsx         # /test/nested/deep
+│   │       └── [id]/
+│   │           └── page.tsx     # /test/nested/deep/:id
+│   ├── param/
+│   │   └── [id]/
+│   │       └── page.tsx         # /test/param/:id
+│   └── optional/
+│       ├── page.tsx             # /test/optional
+│       └── [optional$]/
+│           └── page.tsx         # /test/optional/:optional?
+```
+
+## 生成的路由结构
+
+基于上述文件树，生成的路由配置如下：
+
+```ts
+[
+  {
+    path: '/test',
+    name: 'test',
+    component: () => import('/src/views/test/page.tsx'),
     children: [
       {
-        path: '/',
-        element: <AnimateRoute />,
-        children: views.concat(components), // 所有路由
+        path: '/test/nested',
+        name: 'testNested',
+        component: () => import('/src/views/test/nested/page.tsx'),
+        children: [
+          {
+            path: '/test/nested/deep',
+            name: 'testNestedDeep',
+            component: () => import('/src/views/test/nested/deep/page.tsx'),
+            children: [
+              {
+                path: '/test/nested/deep/:id',
+                name: 'testNestedDeepId',
+                component: () => import('/src/views/test/nested/deep/[id]/page.tsx'),
+                children: []
+              }
+            ]
+          }
+        ]
       },
-    ],
-  },
-])
+      {
+        path: '/test/param/:id',
+        name: 'testParamId',
+        component: () => import('/src/views/test/param/[id]/page.tsx'),
+        children: []
+      },
+      {
+        path: '/test/optional',
+        name: 'testOptional',
+        component: () => import('/src/views/test/optional/page.tsx'),
+        children: [
+          {
+            path: '/test/optional/:optional?',
+            name: 'testOptionalOptional',
+            component: () => import('/src/views/test/optional/[optional$]/page.tsx'),
+            children: []
+          }
+        ]
+      }
+    ]
+  }
+]
 ```
-
-如果你用的不是 *vite*，并且支持 *node* 环境，请使用`https://www.npmjs.com/package/@jl-org/auto-route`
-
-
-## 规范
-
-<pre>
-根文件夹
-|-- src
-  |-- views
-    |-- index.vue
-    |-- meta.(ts | js)
-    |-- about
-      |-- index.vue
-      |-- meta.(ts | js)
-      |-- nestFloder
-        |-- index.vue
-        |-- meta.(ts | js)
-</pre>
-
-如上图示例目录结构所示
-
-推荐在`/src/views/`下建立你的路由文件
-
-`/src/views/index.vue`，会作为路由的首页，且必须存在
-
-`/src/views/about/index.vue`，会作为首页的子路由
-
-*meta* 为可选项
-
-## 我不想让 `src/views/index.vue` 作为首页怎么办？
-
-当你可能需要 `/home` 作为首页，那么你可以进行如下配置
-
-首先，`src/views/index.vue` 必须创建，你里面可以不写东西，比如
-```html
-<template></template>
-```
-
-创建 `src/views/meta.{j,t}s` 文件，里面写上重定向即可  
-然后你就可以在 `src/views/home/index.vue` 编写你的首页了
-```ts
-export default {
-    redirect: '/home',
-}
-```
-
-
-
-## 如何传递 *meta* ？
-
-在同级目录下，创建一个 *meta.ts* | *meta.js* 文件
-
-并默认导出一个对象，该对象包含了所有需要传递的 *meta* 信息。
-
-## 如何使用嵌套路由 ？
-
-在一个目录下，创建一个新的文件夹，里面包含 *index.vue* 文件即可
-
-## 如果使用路由守卫？
-
-在 *meta.ts* | *meta.js* 文件中，添加一个 *beforeEnter* 函数即可
-
-*beforeEnter* 会被自动提取出来
-
-## 如果使用 *redirect* ？
-
-在 *meta.ts* | *meta.js* 文件中，添加一个 *redirect* 对象即可
-
-*redirect* 会被自动提取出来
-
-## 如何使用 *param* ？
-
-路由参数，$ 代表可选参数
-  - *about/[param]*
-  - *about/[param$]*

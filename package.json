@@ -1,8 +1,8 @@
 {
   "name": "@jl-org/vite-auto-route",
-  "version": "1.0.7",
+  "version": "2.0.0",
   "homepage": "https://github.com/beixiyo/vite-auto-route",
-  "description": "自动生成路由配置，支持嵌套路由",
+  "description": "自动生成 Vite 路由配置，支持 Vue、React 嵌套路由",
   "module": "dist/index.js",
   "type": "module",
   "types": "dist/typings/index.d.ts",
@@ -24,7 +24,7 @@
     "vite-route",
     "vite-auto-route"
   ],
-  "author": "cjl",
+  "author": "2662442385@qq.com",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-alias": "^5.1.0",
