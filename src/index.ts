@@ -63,7 +63,7 @@ export function genRoutes(options: FileSystemRouteOptions = {}): FileSystemRoute
       ? normalizedRelative.split('/')
       : []
 
-    insertRoute(treeRoot, segments, loader)
+    insertRoute(treeRoot, segments, loader as ModuleLoader)
   }
 
   const { route: rootRoute, spilled } = buildRoute(treeRoot, [], [], opts, null)
@@ -123,11 +123,6 @@ function applyTransform(
   for (const route of routes) {
     route.children = applyTransform(route.children, route, opts)
 
-    if (!opts.transformRoute) {
-      nextRoutes.push(route)
-      continue
-    }
-
     const context: RouteTransformContext = {
       segments: route.segments,
       rawSegments: route.rawSegments,
@@ -137,7 +132,20 @@ function applyTransform(
       parentRoute,
     }
 
-    const transformed = opts.transformRoute(route, context)
+    // 先应用 customizeRoute（如果存在）
+    let customizedRoute = route
+    if (opts.customizeRoute) {
+      const customizeFn = opts.customizeRoute(context)
+      customizedRoute = customizeFn(route)
+    }
+
+    // 再应用 transformRoute（如果存在）
+    if (!opts.transformRoute) {
+      nextRoutes.push(customizedRoute)
+      continue
+    }
+
+    const transformed = opts.transformRoute(customizedRoute, context)
     if (!transformed)
       continue
 

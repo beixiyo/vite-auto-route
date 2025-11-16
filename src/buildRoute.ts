@@ -34,27 +34,32 @@ function buildRoute(
   for (const child of children) {
     const childResult = buildRoute(child, currentNormalized, currentRaw, opts, currentStaticParent)
 
+    // 特殊处理：如果父节点是静态路由且有 component，子节点是参数路由，应该提升为兄弟节点
+    const isParentStaticWithComponent = node.component && node.parsed?.type === 'static'
+    const isChildParamRoute = child.parsed && child.parsed.type !== 'static'
+
     if (childResult.route) {
-      if (child.parsed && child.parsed.type !== 'static') {
-        /**
-         * 参数路由：如果存在静态父节点，放入 spilled 让静态父节点处理
-         * 否则继续向上传播
-         */
-        if (currentStaticParent) {
-          spilledChildren.push(childResult.route)
-        }
-        else {
-          spilledChildren.push(childResult.route)
-        }
+      // 如果父节点是静态路由且有 component，子节点是参数路由，提升为兄弟节点（放入 spilled）
+      if (isParentStaticWithComponent && isChildParamRoute) {
+        spilledChildren.push(childResult.route)
+      }
+      // 如果当前节点有 component，且不是上述特殊情况，子路由应该放在它的 children 中
+      else if (node.component) {
+        directChildren.push(childResult.route)
       }
       else {
-        directChildren.push(childResult.route)
+        // 如果当前节点没有 component，子路由需要向上传播
+        spilledChildren.push(childResult.route)
       }
     }
 
     if (childResult.spilled.length) {
-      /** 如果当前节点是静态的且有 component，参数子路由应该放在它的 children 中 */
-      if (isStaticWithComponent) {
+      // 如果父节点是静态路由且有 component，子节点是参数路由，spilled 也应该提升为兄弟节点
+      if (isParentStaticWithComponent && isChildParamRoute) {
+        spilledChildren.push(...childResult.spilled)
+      }
+      // 如果当前节点有 component，且不是上述特殊情况，spilled 的子路由应该放在它的 children 中
+      else if (node.component) {
         directChildren.push(...childResult.spilled)
       }
       else {

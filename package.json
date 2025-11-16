@@ -1,6 +1,6 @@
 {
   "name": "@jl-org/vite-auto-route",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "homepage": "https://github.com/beixiyo/vite-auto-route",
   "description": "自动生成 Vite 路由配置，支持 Vue、React 嵌套路由",
   "module": "dist/index.js",
@@ -35,7 +35,8 @@
     "rollup": "^4.6.1",
     "rollup-plugin-clear": "^2.0.7",
     "tsc-alias": "^1.8.8",
-    "tslib": "^2.6.2"
+    "tslib": "^2.6.2",
+    "vite": "^7.2.2"
   },
   "publishConfig": {
     "access": "public"
