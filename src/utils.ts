@@ -1,11 +1,5 @@
 import type { ParsedSegment } from './types'
 
-export function ensureLeadingSlash(value: string) {
-  if (!value.startsWith('/'))
-    return `/${value}`
-  return value
-}
-
 export function stripLeadingSlash(value: string) {
   if (!value.length)
     return value
@@ -17,27 +11,7 @@ export function stripLeadingSlash(value: string) {
 }
 
 export function joinAsAbsolutePath(segments: string[]) {
-  if (!segments.length)
-    return '/'
-
-  /** 处理 catchall 路由：将 :param* 拆分为 :param 和 /* 两部分 */
-  const processedSegments: string[] = []
-  for (const segment of segments) {
-    if (!segment)
-      continue
-
-    /** 检测 catchall 模式（以 * 结尾的参数） */
-    if (segment.endsWith('*') && segment.startsWith(':')) {
-      /** 将 :param* 拆分为 :param 和 */
-      const paramPart = segment.slice(0, -1) // 移除末尾的 *
-      processedSegments.push(paramPart, '*')
-    }
-    else {
-      processedSegments.push(segment)
-    }
-  }
-
-  const joined = processedSegments.join('/')
+  const joined = segments.filter(Boolean).join('/')
   return joined.length
     ? `/${joined}`
     : '/'
@@ -54,6 +28,9 @@ export function sanitizeNameSegment(raw: ParsedSegment) {
     return raw.raw
   return raw.paramName
 }
+
+/** 合法路由参数名：字母/下划线/$ 开头，其余为单词字符或 $（与 path-to-regexp v8 要求一致） */
+const VALID_PARAM_NAME = /^[A-Z_$][\w$]*$/i
 
 export function parseSegment(segment: string): ParsedSegment {
   if (!segment.length) {
@@ -75,6 +52,7 @@ export function parseSegment(segment: string): ParsedSegment {
   }
 
   let inner = segment.slice(1, -1)
+
   let isOptional = false
   if (inner.endsWith('$')) {
     isOptional = true
@@ -87,20 +65,34 @@ export function parseSegment(segment: string): ParsedSegment {
     inner = inner.slice(3)
   }
 
-  const paramName = inner || 'slug'
+  /**
+   * catchAll：消费方用固定键 `splat` 捕获完整剩余路径，故 path 段统一为 `**`，
+   * 参数名仅用于生成路由 name（不进入 path），无需做标识符校验
+   */
   if (isCatchAll) {
     return {
       raw: segment,
-      paramName,
-      pathPart: `:${paramName}*`,
+      paramName: inner || 'slug',
+      pathPart: '**',
       type: 'catchAll',
     }
   }
 
+  /**
+   * dynamic / optional：参数名会进入 path（`:name`），必须是合法标识符
+   * 否则 `[2fa]`/`[a/b]`/`[ id ]` 这类会让 path-to-regexp 在匹配期抛错、拖垮整个路由
+   */
+  if (!VALID_PARAM_NAME.test(inner)) {
+    throw new Error(
+      `[vite-auto-route] 非法路由参数名 "${inner}"（来自目录 "${segment}"）：`
+      + `参数名须以字母/下划线/$ 开头、仅含单词字符，否则会导致 path-to-regexp 匹配期抛错`,
+    )
+  }
+
   return {
     raw: segment,
-    paramName,
-    pathPart: `:${paramName}${isOptional
+    paramName: inner,
+    pathPart: `:${inner}${isOptional
       ? '?'
       : ''}`,
     type: isOptional

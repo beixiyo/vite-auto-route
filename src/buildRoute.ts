@@ -7,7 +7,6 @@ function buildRoute(
   normalizedSegments: string[],
   rawSegments: string[],
   opts: RequiredOptions,
-  lastStaticParent: RouteTreeNode | null = null, // 新增：追踪最近的静态父节点
 ): BuildResult {
   const currentNormalized = node.parsed?.pathPart
     ? [...normalizedSegments, node.parsed.pathPart]
@@ -16,62 +15,59 @@ function buildRoute(
     ? [...rawSegments, node.segment]
     : [...rawSegments]
 
-  /** 如果当前节点是静态的且有 component，它就是新的静态父节点 */
-  const isStaticWithComponent = node.component && node.parsed?.type === 'static'
-  const currentStaticParent = isStaticWithComponent
-    ? node
-    : lastStaticParent
-
   const directChildren: FileSystemRoute[] = []
   const spilledChildren: FileSystemRoute[] = []
 
+  /**
+   * 同级排序：静态 < 动态 < 可选 < catchAll，同类再按字母序
+   * 让更「具体」的路由永远排在更「宽泛」的前面 —— 消费方按数组顺序首个命中，
+   * 否则 `/group/:id` 排在 `/group/settings` 前会把静态路由永久遮蔽
+   */
   const children = Array.from(node.children.values()).sort((a, b) => {
-    const left = a.segment ?? ''
-    const right = b.segment ?? ''
-    return left.localeCompare(right)
+    const ra = segmentRank(a)
+    const rb = segmentRank(b)
+    if (ra !== rb)
+      return ra - rb
+    return (a.segment ?? '').localeCompare(b.segment ?? '')
   })
 
-  for (const child of children) {
-    const childResult = buildRoute(child, currentNormalized, currentRaw, opts, currentStaticParent)
+  /** 当前节点是否为「静态且有 component」的父（根节点 parsed=null 视作静态根 `/`，与非根静态父一致） */
+  const isParentStaticWithComponent = isStaticWithComponent(node)
 
-    // 特殊处理：如果父节点是静态路由且有 component，子节点是参数路由，应该提升为兄弟节点
-    const isParentStaticWithComponent = node.component && node.parsed?.type === 'static'
-    const isChildParamRoute = child.parsed && child.parsed.type !== 'static'
+  for (const child of children) {
+    const childResult = buildRoute(child, currentNormalized, currentRaw, opts)
+
+    const isChildParamRoute = child.parsed != null && child.parsed.type !== 'static'
+    /**
+     * 静态有组件父 + 参数子 → 把参数路由「提升」为兄弟节点，而非嵌进父 children：
+     * 否则父级会被迫从「内容页」降格为「必须套 Outlet 的布局」
+     */
+    const promoteToSibling = isParentStaticWithComponent && isChildParamRoute
 
     if (childResult.route) {
-      // 如果父节点是静态路由且有 component，子节点是参数路由，提升为兄弟节点（放入 spilled）
-      if (isParentStaticWithComponent && isChildParamRoute) {
+      if (promoteToSibling)
         spilledChildren.push(childResult.route)
-      }
-      // 如果当前节点有 component，且不是上述特殊情况，子路由应该放在它的 children 中
-      else if (node.component) {
+      else if (node.component)
         directChildren.push(childResult.route)
-      }
-      else {
-        // 如果当前节点没有 component，子路由需要向上传播
+      else
         spilledChildren.push(childResult.route)
-      }
     }
 
     if (childResult.spilled.length) {
-      // 如果父节点是静态路由且有 component，子节点是参数路由，spilled 也应该提升为兄弟节点
-      if (isParentStaticWithComponent && isChildParamRoute) {
+      if (promoteToSibling)
         spilledChildren.push(...childResult.spilled)
-      }
-      // 如果当前节点有 component，且不是上述特殊情况，spilled 的子路由应该放在它的 children 中
-      else if (node.component) {
+      else if (node.component)
         directChildren.push(...childResult.spilled)
-      }
-      else {
+      else
         spilledChildren.push(...childResult.spilled)
-      }
     }
   }
 
+  /** 无 component 的中间节点：自身不成路由，子路由全部向上冒泡（directChildren 此时恒为空） */
   if (!node.component) {
     return {
       route: null,
-      spilled: [...directChildren, ...spilledChildren],
+      spilled: spilledChildren,
     }
   }
 
@@ -79,6 +75,25 @@ function buildRoute(
   return {
     route,
     spilled: spilledChildren,
+  }
+}
+
+/** 「静态且有 component」判定；根节点 parsed=null 视作静态根 `/` */
+function isStaticWithComponent(node: RouteTreeNode): boolean {
+  return Boolean(node.component) && (!node.parsed || node.parsed.type === 'static')
+}
+
+/** 段类型排序权重：静态(0) < 动态(1) < 可选(2) < catchAll(3) */
+function segmentRank(node: RouteTreeNode): number {
+  switch (node.parsed?.type) {
+    case 'catchAll':
+      return 3
+    case 'optional':
+      return 2
+    case 'dynamic':
+      return 1
+    default:
+      return 0
   }
 }
 

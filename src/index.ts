@@ -37,11 +37,18 @@ export function genRoutes(options: FileSystemRouteOptions = {}): FileSystemRoute
     },
   }
 
+  // 逐字段 ?? 兜底：避免 { ...options } 把「显式传入的 undefined」覆盖掉默认值
+  // （如 genRoutes({ ...userConfig }) 中某项为 undefined 时静默清空路由 / 泄漏前缀）
   const opts: RequiredOptions = {
-    ...defaultOptions,
-    ...options,
+    pathPrefix: options.pathPrefix ?? defaultOptions.pathPrefix,
+    rawPathKey: options.rawPathKey ?? defaultOptions.rawPathKey,
+    indexFileName: options.indexFileName ?? defaultOptions.indexFileName,
+    routerPathFolder: options.routerPathFolder ?? defaultOptions.routerPathFolder,
     globComponentsImport: options.globComponentsImport ?? defaultOptions.globComponentsImport,
     resolveRouteName: options.resolveRouteName ?? defaultOptions.resolveRouteName,
+    transformRoute: options.transformRoute,
+    customizeRoute: options.customizeRoute,
+    extendRoutes: options.extendRoutes,
   }
 
   const componentModules = opts.globComponentsImport()
@@ -60,13 +67,13 @@ export function genRoutes(options: FileSystemRouteOptions = {}): FileSystemRoute
     const relativePath = baseDir.replace(opts.pathPrefix, '')
     const normalizedRelative = stripLeadingSlash(relativePath)
     const segments = normalizedRelative.length
-      ? normalizedRelative.split('/')
+      ? normalizedRelative.split('/').filter(Boolean)
       : []
 
     insertRoute(treeRoot, segments, loader as ModuleLoader)
   }
 
-  const { route: rootRoute, spilled } = buildRoute(treeRoot, [], [], opts, null)
+  const { route: rootRoute, spilled } = buildRoute(treeRoot, [], [], opts)
   const combinedRoutes = []
   if (rootRoute)
     combinedRoutes.push(rootRoute)

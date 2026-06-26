@@ -148,7 +148,7 @@ export interface FileSystemRouteOptions {
    */
   customizeRoute?: (
     context: RouteTransformContext
-  ) => (route: FileSystemRoute) => any
+  ) => (route: FileSystemRoute) => FileSystemRoute
   /**
    * 针对单个路由节点进行转换（推荐用于复杂转换逻辑）
    *
