@@ -12,7 +12,9 @@
 |---------|--------------|------|
 | `[id]/page.tsx` | `/:id` | 必选参数 |
 | `[id$]/page.tsx` | `/:id?` | 可选参数（以 `$` 结尾） |
-| `[...slug]/page.tsx` | `/:slug*` | 捕获所有参数（以 `...` 开头） |
+| `[...slug]/page.tsx` | `/**` | 捕获所有参数（以 `...` 开头）；在 @jl-org/react-router 中通过 `params.splat`（数组）读取完整剩余路径 |
+
+> 参数名须为合法标识符（字母 / `_` / `$` 开头），如 `[2fa]`、`[a.b]` 这类非法名会在构建期直接报错，避免运行时崩溃。
 
 ---
 
@@ -22,6 +24,7 @@
 
 ```ts
 import { genRoutes } from '@jl-org/vite-auto-route'
+import { lazy } from 'react'
 import { createBrowserRouter } from 'react-router'
 import Index from '@/views'
 
@@ -31,9 +34,10 @@ export const pages = genRoutes({
   routerPathFolder: '/src/views',
   pathPrefix: /^\/src\/views/,
   customizeRoute: (context) => (route) => {
+    // 必须展开 ...route，否则会丢掉已经生成好的 children（嵌套路由全部消失）
     return {
-      path: route.path,
-      Component: lazy(route.component)
+      ...route,
+      Component: lazy(route.component),
       // ... anything you want
     }
   },
@@ -48,6 +52,8 @@ export const pages = genRoutes({
 
 export const router = createBrowserRouter(pages)
 ```
+
+> 提示：`@jl-org/react-router` 的 `route.component` 可直接接受 `import.meta.glob` 返回的 loader（`() => Promise<{ default }>`），此时无需 `customizeRoute` / `lazy` 转换，直接 `createBrowserRouter({ routes: pages })` 即可。上面的 `lazy` 写法用于官方 `react-router`。
 
 ## Vue Router 使用示例
 
@@ -263,6 +269,10 @@ src/views/
 
 基于上述文件树，生成的路由配置如下：
 
+> 两条规则：
+> 1. **参数提升（spill）**：当静态父节点自身有 `page`（component）时，其下的「参数子路由」会从父的 `children` 中**提升为兄弟节点**（如 `:id` 与 `deep` 平级、`:optional?` 与 `optional` 平级），避免父级被迫充当布局；静态子路由仍正常嵌套。
+> 2. **同级排序**：同一层按「静态 < 动态 < 可选 < catchAll」排序，同类再按字母序，保证更具体的路由先于更宽泛的被匹配。
+
 ```ts
 [
   {
@@ -279,37 +289,44 @@ src/views/
             path: '/test/nested/deep',
             name: 'testNestedDeep',
             component: () => import('/src/views/test/nested/deep/page.tsx'),
-            children: [
-              {
-                path: '/test/nested/deep/:id',
-                name: 'testNestedDeepId',
-                component: () => import('/src/views/test/nested/deep/[id]/page.tsx'),
-                children: []
-              }
-            ]
+            children: []
+          },
+          // [id] 被提升为 deep 的兄弟（而非嵌进 deep.children）
+          {
+            path: '/test/nested/deep/:id',
+            name: 'testNestedDeepId',
+            component: () => import('/src/views/test/nested/deep/[id]/page.tsx'),
+            children: []
           }
         ]
+      },
+      {
+        path: '/test/optional',
+        name: 'testOptional',
+        component: () => import('/src/views/test/optional/page.tsx'),
+        children: []
+      },
+      // [optional$] 被提升为 optional 的兄弟
+      {
+        path: '/test/optional/:optional?',
+        name: 'testOptionalOptional',
+        component: () => import('/src/views/test/optional/[optional$]/page.tsx'),
+        children: []
       },
       {
         path: '/test/param/:id',
         name: 'testParamId',
         component: () => import('/src/views/test/param/[id]/page.tsx'),
         children: []
-      },
-      {
-        path: '/test/optional',
-        name: 'testOptional',
-        component: () => import('/src/views/test/optional/page.tsx'),
-        children: [
-          {
-            path: '/test/optional/:optional?',
-            name: 'testOptionalOptional',
-            component: () => import('/src/views/test/optional/[optional$]/page.tsx'),
-            children: []
-          }
-        ]
       }
     ]
   }
 ]
+```
+
+## 开发与测试
+
+```bash
+pnpm test          # 运行 vitest 单测（test/ 目录）
+pnpm --dir playground install && pnpm --dir playground dev   # 启动可视化 Playground（真实 react-router 导航 Demo）
 ```
